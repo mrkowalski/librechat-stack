@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Thin wrapper: upstream compose file + our override, secrets via librechat/.env symlink
+set -euo pipefail
+cd "$(dirname "$0")"
+exec docker compose --project-directory librechat \
+  -f librechat/docker-compose.yml -f compose.override.yml "$@"
