@@ -1,0 +1,44 @@
+# Layered on top of librechat/docker-compose.yml via ./dc.
+# Relative paths resolve against the project directory (librechat/), hence ../
+# Volume entries replace upstream ones when the container path (target) matches.
+services:
+  api:
+    depends_on:
+      - mitm
+    volumes:
+      - ../config/librechat.yaml:/app/librechat.yaml:ro
+      - ../data/images:/app/client/public/images
+      - ../data/uploads:/app/uploads
+      - ../data/logs:/app/logs
+      - ../data/skill:/app/skill
+
+  mongodb:
+    volumes:
+      - ../data/mongo:/data/db
+
+  meilisearch:
+    volumes:
+      # keep the version in the name, mirroring upstream: a Meilisearch upgrade
+      # needs a fresh index dir (it rebuilds from MongoDB)
+      - ../data/meili_v1.35.1:/meili_data
+
+  mitm:
+    image: mitmproxy/mitmproxy:12.2.3
+    container_name: mitm
+    restart: unless-stopped
+    environment:
+      TZ: Europe/Warsaw
+    command: >
+      mitmweb
+      --mode reverse:https://openrouter.ai
+      --listen-port 8080
+      --web-host 0.0.0.0
+      --web-port 8081
+      --set web_password=${MITM_WEB_PASSWORD:?set MITM_WEB_PASSWORD in secrets/.env}
+      --set web_open_browser=false
+      -s /addons/by_conversation.py
+    volumes:
+      - ../mitm/addons:/addons:ro
+      - ../data/mitm:/data
+    ports:
+      - "127.0.0.1:8081:8081"   # web UI, localhost only; 8080 stays internal
